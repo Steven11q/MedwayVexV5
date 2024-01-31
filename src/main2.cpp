@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
-/*    Author:       hunt                                                      */
+/*    Authors:      hunt/willam                                               */
 /*    Created:      1/30/2024, 9:34:37 AM                                     */
 /*    Description:  V5 project                                                */
 /*                                                                            */
