@@ -111,6 +111,51 @@ void autonomous(void) {
   // ..........................................................................
   // Insert autonomous user code here.
   // ..........................................................................
+  wait(2, seconds);
+
+  bool isGoalLeft = Distance3.objectDistance(mm) <= 1000;
+  
+  if (isGoalLeft)
+  {
+
+  }
+  else
+  {
+    LeftTrain.setVelocity(45, percent);
+    RightTrain.setVelocity(55, percent);
+
+    LeftTrain.spin(forward);
+    RightTrain.spin(forward);
+
+    wait(700, msec);
+
+    LeftTrain.setVelocity(30, percent);
+    RightTrain.setVelocity(30, percent);
+
+    LeftTrain.spin(forward);
+    RightTrain.spin(forward);
+
+    wait(1900, msec);
+
+    LeftTrain.setVelocity(60, percent);
+    RightTrain.setVelocity(10, percent);
+
+    LeftTrain.spin(forward);
+    RightTrain.spin(forward);
+
+    wait(1000, msec);
+
+    LeftTrain.setVelocity(100, percent);
+    RightTrain.setVelocity(100, percent);
+
+    LeftTrain.spin(forward);
+    RightTrain.spin(forward);
+
+    wait(800, msec);
+
+    LeftTrain.stop();
+    RightTrain.stop();
+  }
 }
 
 /*---------------------------------------------------------------------------*/
