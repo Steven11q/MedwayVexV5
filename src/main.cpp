@@ -1,11 +1,4 @@
-/*----------------------------------------------------------------------------*/
-/*                                                                            */
-/*    Module:       main.cpp                                                  */
-/*    Author:       hunt                                                      */
-/*    Created:      1/30/2024, 9:34:37 AM                                     */
-/*    Description:  V5 project                                                */
-/*                                                                            */
-/*----------------------------------------------------------------------------*/
+#pragma region VEXcode Generated Robot Configuration
 // Make sure all required headers are included.
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,13 +27,20 @@ brain Brain;
 
 
 // Robot configuration code.
-motor LeftTrainMotorA = motor(PORT10, ratio18_1, false);
-motor LeftTrainMotorB = motor(PORT9, ratio18_1, false);
+
+// Robot configuration code.
+motor LeftTrainMotorA = motor(PORT8, ratio18_1, false);
+motor LeftTrainMotorB = motor(PORT7, ratio18_1, false);
 motor_group LeftTrain = motor_group(LeftTrainMotorA, LeftTrainMotorB);
 
-motor RightTrainMotorA = motor(PORT8, ratio18_1, false);
-motor RightTrainMotorB = motor(PORT7, ratio18_1, false);
+motor RightTrainMotorA = motor(PORT10, ratio18_1, false);
+motor RightTrainMotorB = motor(PORT9, ratio18_1, false);
 motor_group RightTrain = motor_group(RightTrainMotorA, RightTrainMotorB);
+motor LeftWing = motor(PORT5, ratio18_1, true);
+
+motor RightWing = motor(PORT6, ratio18_1, false);
+
+digital_out Clamp = digital_out(Brain.ThreeWirePort.A);
 
 controller Controller1 = controller(primary);
 
@@ -57,17 +57,59 @@ void playVexcodeSound(const char *soundName) {
 
 // define variable for remote controller enable/disable
 bool RemoteControlCodeEnabled = true;
+// define variables used for controlling Train based on controller inputs
+bool Controller1LeftShoulderControlTrainStopped = true;
+bool Controller1RightShoulderControlTrainStopped = true;
+
+// define a task that will handle monitoring inputs from Controller1
+int rc_auto_loop_function_Controller1() {
+  // process the controller input every 20 milliseconds
+  // update the Train based on the input values
+  while(true) {
+    if(RemoteControlCodeEnabled) {
+      // check the ButtonL1/ButtonL2 status to control LeftWing
+      if (Controller1.ButtonL1.pressing()) {
+        LeftWing.spin(forward);
+        Controller1LeftShoulderControlTrainStopped = false;
+      } else if (Controller1.ButtonL2.pressing()) {
+        LeftWing.spin(reverse);
+        Controller1LeftShoulderControlTrainStopped = false;
+      } else if (!Controller1LeftShoulderControlTrainStopped) {
+        LeftWing.stop();
+        // set the toggle so that we don't constantly tell the motor to stop when the buttons are released
+        Controller1LeftShoulderControlTrainStopped = true;
+      }
+      // check the ButtonR1/ButtonR2 status to control RightWing
+      if (Controller1.ButtonR1.pressing()) {
+        RightWing.spin(forward);
+        Controller1RightShoulderControlTrainStopped = false;
+      } else if (Controller1.ButtonR2.pressing()) {
+        RightWing.spin(reverse);
+        Controller1RightShoulderControlTrainStopped = false;
+      } else if (!Controller1RightShoulderControlTrainStopped) {
+        RightWing.stop();
+        // set the toggle so that we don't constantly tell the motor to stop when the buttons are released
+        Controller1RightShoulderControlTrainStopped = true;
+      }
+    }
+    // wait before repeating the process
+    wait(20, msec);
+  }
+  return 0;
+}
+
+task rc_auto_loop_task_Controller1(rc_auto_loop_function_Controller1);
 
 #pragma endregion VEXcode Generated Robot Configuration
-
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
-/*    Author:       {author}                                                  */
-/*    Created:      {date}                                                    */
+/*    Authors:      hunt/willam                                               */
+/*    Created:      1/30/2024, 9:34:37 AM                                     */
 /*    Description:  V5 project                                                */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
+// Make sure all required headers are included.
 
 // Include the V5 Library
 #include "vex.h"
@@ -79,7 +121,7 @@ using namespace vex;
 // A global instance of competition
 competition Competition;
 
-// define your global instances of motors and other devices here
+// define your global instances of Train and other devices here
 
 /*---------------------------------------------------------------------------*/
 /*                          Pre-Autonomous Functions                         */
@@ -92,6 +134,13 @@ competition Competition;
 /*---------------------------------------------------------------------------*/
 
 void pre_auton(void) {
+  LeftWing.setStopping(hold);
+  RightWing.setStopping(hold);
+
+  LeftTrain.setStopping(brake);
+  RightTrain.setStopping(brake);
+  LeftWing.setVelocity(100, percent);
+  RightWing.setVelocity(100, percent);
 
   // All activities that occur before the competition starts
   // Example: clearing encoders, setting servo positions, ...
@@ -107,10 +156,135 @@ void pre_auton(void) {
 /*  You must modify the code to add your own robot specific commands here.   */
 /*---------------------------------------------------------------------------*/
 
+//custom right wing movement (IE impliments stops)
+void moveLeftWing(int toDegrees, double error, int speed)
+{
+  LeftWing.setVelocity(speed, percent);
+
+  while (
+    LeftWing.position(degrees) < toDegrees - error ||
+    LeftWing.position(degrees) > toDegrees + error)
+  {
+    if (LeftWing.position(degrees) < toDegrees - error)
+    {
+      LeftWing.spin(forward);
+    }
+    else if (LeftWing.position(degrees) > toDegrees + error)
+    {
+      LeftWing.spin(reverse);
+    }
+    else
+    {
+      LeftWing.stop();
+    }
+  }
+
+  LeftWing.stop();
+}
+
+//custom right wing movement (IE impliments stops)
+void moveRightWing(int toDegrees, double error, int speed)
+{
+  RightWing.setVelocity(speed, percent);
+
+  while (
+    RightWing.position(degrees) < toDegrees - error ||
+    RightWing.position(degrees) > toDegrees + error)
+  {
+    if (RightWing.position(degrees) < toDegrees - error)
+    {
+      RightWing.spin(forward);
+    }
+    else if (RightWing.position(degrees) > toDegrees + error)
+    {
+      RightWing.spin(reverse);
+    }
+    else
+    {
+      RightWing.stop();
+    }
+  }
+
+  RightWing.stop();
+}
+
 void autonomous(void) {
   // ..........................................................................
   // Insert autonomous user code here.
   // ..........................................................................
+  LeftWing.setStopping(hold);
+  RightWing.setStopping(hold);
+
+  LeftTrain.setStopping(brake);
+  RightTrain.setStopping(brake);
+
+  //moveRightWing(-135, 0.5, 10);
+  //moveLeftWing(-135, 0.5, 10);
+
+
+  LeftWing.spin(reverse);
+  wait(800, msec);
+  RightWing.spin(reverse);
+  wait(800, msec);
+
+
+  wait(200, msec);
+
+  //LeftTrain.setVelocity(30, percent);
+  //RightTrain.setVelocity(30, percent);
+
+  LeftTrain.spin(forward);
+  RightTrain.spin(forward);
+
+  wait(8000, msec);
+
+  LeftTrain.stop();
+  RightTrain.stop();
+
+  //moveRightWing(0, 0.5, 20);
+
+  wait(800, msec);
+
+  //moveRightWing(90, 0.5, 10);
+  //moveLeftWing(0, 0.5, 20);
+  //moveRightWing(0, 0.5, 20);
+
+  RightWing.spin(forward);
+  wait(800, msec);
+  LeftWing.spin(forward);
+  wait(800, msec);
+  
+  wait(100, msec);
+
+  LeftTrain.setVelocity(20, percent);
+  RightTrain.setVelocity(40, percent);
+
+  LeftTrain.spin(forward);
+  RightTrain.spin(forward);
+
+  wait(1000, msec);
+
+  LeftTrain.stop();
+  RightTrain.stop();
+
+  wait(200, msec);
+
+  LeftTrain.setVelocity(100, percent);
+  RightTrain.setVelocity(100, percent);
+
+  LeftTrain.spin(forward);
+  RightTrain.spin(forward);
+
+  wait(1500, msec);
+
+  LeftTrain.setVelocity(30, percent);
+  RightTrain.setVelocity(30, percent);
+
+  LeftTrain.spin(reverse);
+  RightTrain.spin(reverse);
+
+  wait(1500, msec);
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -132,10 +306,10 @@ void usercontrol(void) {
 
     // ........................................................................
     // Insert user code here. This is where you use the joystick values to
-    // update your motors, etc.
+    // update your Train, etc.
     // ........................................................................
-    int upDown = Controller1.Axis3.position();
-    int leftRight = Controller1.Axis1.position();
+    int leftRight = Controller1.Axis3.position();
+    int upDown = Controller1.Axis1.position();
     
     double leftVelocity, rightVelocity;
     
@@ -147,6 +321,13 @@ void usercontrol(void) {
 
     LeftTrain.spin(forward);
     RightTrain.spin(forward);
+
+    if(Controller1.ButtonA.pressing()){
+      Clamp.set(false);
+    }
+    else{
+      Clamp.set(true);
+    }
 
 
     
@@ -162,12 +343,18 @@ void usercontrol(void) {
 // Main will set up the competition functions and callbacks.
 //
 int main() {
+  pre_auton();
+  bool meow = false;
+  if (meow == true){
+    autonomous();
+
+  }
   // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
   Competition.drivercontrol(usercontrol);
 
-  // Run the pre-autonomous function.
-  pre_auton();
+  
+  
 
   // Prevent main from exiting with an infinite loop.
   while (true) {
